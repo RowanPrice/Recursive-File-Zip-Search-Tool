@@ -1,0 +1,12 @@
+# flake8 settings. Run `flake8 .` from the repo root to check your code.
+[flake8]
+# Allow slightly longer lines than the default 79.
+max-line-length = 100
+# Folders flake8 should skip.
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    build,
+    dist
