@@ -1,0 +1,49 @@
+# CI: runs the lint check and the tests on every push and pull request to main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      # Keep going on the other Python versions if one of them fails,
+      # so you can see every failure at once.
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.10", "3.12"]
+    steps:
+      # Download the repository code onto the runner machine.
+      - uses: actions/checkout@v4
+
+      # Install the Python version for this matrix entry.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Install flake8 and pytest. If requirements-dev.txt exists
+      # (added by the scaffold issue), install that file too.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      # Style check. Settings live in .flake8.
+      - name: Lint with flake8
+        run: flake8 .
+
+      # Run the tests. pytest exits with code 5 when it finds no tests.
+      # That is fine until the scaffold lands, so only code 5 is ignored.
+      - name: Run tests
+        run: |
+          pytest || status=$?
+          if [ "${status:-0}" -eq 5 ]; then
+            echo "No tests collected yet - treating as success."
+            exit 0
+          fi
+          exit "${status:-0}"
