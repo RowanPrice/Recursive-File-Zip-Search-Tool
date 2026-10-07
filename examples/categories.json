@@ -1,0 +1,6 @@
+{
+  "documents": {"extensions": [".txt", ".pdf", ".docx"]},
+  "images": {"extensions": [".png", ".jpg", ".jpeg"]},
+  "reports": {"patterns": ["report_*", "*_report.*"]},
+  "python": {"extensions": [".py"], "patterns": ["requirements*.txt"]}
+}
