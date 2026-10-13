@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Iterator, List, Tuple, Union
+from typing import Iterator, List, Optional, Tuple, Union
 
 from zipsearch.logging_setup import log_errors
 
@@ -37,3 +37,28 @@ def walk(root: Path) -> Iterator[str]:
     for folder, _directories, files in walk_directories(root):
         for name in files:
             yield os.path.join(folder, name)
+
+
+def root_problem(root: Path) -> Optional[str]:
+    """Return a short reason the root folder cannot be searched, else None.
+
+    main.py uses this to stop with a clear, helpful message instead of a
+    traceback. A missing path, a plain file and an unreadable folder each
+    get their own reason. Readability is checked by really opening the
+    folder listing, because permission rules differ between systems.
+    """
+    path = os.fspath(root)
+    if not os.path.exists(path):
+        return "the folder does not exist"
+    if not os.path.isdir(path):
+        return "it is a file, not a folder"
+    try:
+        # Opening the listing is the only reliable permission check.
+        with os.scandir(path) as entries:
+            for _entry in entries:
+                break
+    except PermissionError:
+        return "permission denied"
+    except OSError as error:
+        return str(error)
+    return None
