@@ -70,13 +70,18 @@ def test_cli_preserves_listing(tmp_path):
         expected += "\nDirectory: {}\n".format(folder)
         expected += "".join("  [DIR] {}\n".format(name) for name in dirs)
         expected += "".join("  [FILE] {}\n".format(name) for name in files)
+    csv_path = tmp_path.parent / (tmp_path.name + ".csv")
     result = subprocess.run(
         [sys.executable, str(PROJECT_ROOT / "main.py"), str(tmp_path),
-         "--log-file", str(tmp_path.parent / (tmp_path.name + ".log"))],
+         "--log-file", str(tmp_path.parent / (tmp_path.name + ".log")),
+         "--csv", str(csv_path)],
         capture_output=True, text=True,
     )
     assert result.returncode == 0
+    # file.txt matches the bundled categories, so one result reaches the CSV.
+    expected += "CSV written: {} (1 matched file(s))\n".format(csv_path)
     assert result.stdout == expected
+    assert csv_path.exists()
     assert "INFO zipsearch: Run started" in result.stderr
     assert "INFO zipsearch: Run ended (completed)" in result.stderr
 
@@ -91,7 +96,10 @@ def test_cli_invalid_root(tmp_path):
     )
     assert result.returncode == 1
     assert result.stdout == ""
-    assert "ERROR zipsearch: '{}' is not a valid directory".format(missing) in result.stderr
+    assert (
+        "ERROR zipsearch: Cannot search '{}': the folder does not exist"
+        .format(missing) in result.stderr
+    )
     assert "Run ended (failed)" in result.stderr
 
 
