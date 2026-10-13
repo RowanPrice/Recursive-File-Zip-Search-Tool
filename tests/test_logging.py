@@ -156,7 +156,8 @@ def test_cli_start_root_end_and_file_match(tmp_path):
     log = tmp_path / "run.log"
     main = Path(__file__).resolve().parents[1] / "main.py"
     result = subprocess.run(
-        [sys.executable, str(main), str(root), "--log-file", str(log)],
+        [sys.executable, str(main), str(root), "--log-file", str(log),
+         "--csv", str(tmp_path / "out.csv")],
         capture_output=True, text=True,
     )
     assert result.returncode == 0
