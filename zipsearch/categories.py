@@ -1,9 +1,10 @@
 """Match file names to categories without opening files or changing the CLI."""
 
 import json
+import logging
 from fnmatch import fnmatchcase
 from pathlib import PurePosixPath
-from typing import List, Mapping, Sequence
+from typing import List, Mapping, Optional, Sequence
 
 from zipsearch.logging_setup import log_errors
 from zipsearch.models import Entry, Path
@@ -94,11 +95,33 @@ class CategoryMatcher:
         return self.match(entry.inner_path or entry.container_path)
 
 
+def _load_categories(path: Path) -> CategoryMatcher:
+    """Worker shared by load_categories and safe_load_categories."""
+    with open(path, encoding="utf-8") as config_file:
+        return CategoryMatcher(json.load(config_file))
+
+
 @log_errors
 def load_categories(path: Path) -> CategoryMatcher:
     """Read a UTF-8 JSON config and build the same matcher used with a dict.
 
     Bad JSON/rules raise ValueError. Missing or unreadable files raise OSError.
+    Use safe_load_categories to log one clear line instead of raising.
     """
-    with open(path, encoding="utf-8") as config_file:
-        return CategoryMatcher(json.load(config_file))
+    return _load_categories(path)
+
+
+def safe_load_categories(path: Path) -> Optional[CategoryMatcher]:
+    """Like load_categories, but a bad or missing config is logged, not raised.
+
+    One ERROR line keeps the path and the exact reason, and None is returned,
+    so the caller can stop with a clear message instead of a traceback.
+    """
+    try:
+        return _load_categories(path)
+    except (OSError, ValueError) as error:
+        logging.getLogger(__name__).error(
+            "Cannot load categories from '%s': %s: %s",
+            path, type(error).__name__, error,
+        )
+        return None
