@@ -25,7 +25,13 @@ def setup_logging(
     logger = logging.getLogger(LOGGER_NAME)
     formatter = logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT)
     try:
-        file_handler = logging.FileHandler(Path(log_path), encoding="utf-8")
+        # errors="backslashreplace" keeps a filename with odd bytes from
+        # breaking the log write; it appears as a readable \xNN-style escape.
+        # Open the stream ourselves because FileHandler only gained the
+        # errors option in Python 3.9, and this project supports 3.8.
+        file_handler = logging.StreamHandler(
+            open(Path(log_path), "a", encoding="utf-8", errors="backslashreplace")
+        )
     except OSError:
         # The requested file cannot be used, so report to the console instead.
         fallback = logging.StreamHandler(console if console is not None else sys.stderr)

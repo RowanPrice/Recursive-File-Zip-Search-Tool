@@ -26,14 +26,8 @@ class Result(TypedDict):
     last_modified: Optional[str]
 
 
-@log_errors
-def file_entry(path: FilePath) -> Entry:
-    """Read an ordinary file's size and modification time, without its contents.
-
-    Paths stay relative or absolute as supplied, except pathlib normalizes
-    redundant separators and './'. Missing/unreadable files raise OSError.
-    The timestamp uses UTC (+00:00), not the machine's local timezone.
-    """
+def _file_entry(path: FilePath) -> Entry:
+    """Worker shared by file_entry and safe_file_entry; see file_entry."""
     file = Path(path)
     metadata = file.stat()
     return Entry(
@@ -46,6 +40,34 @@ def file_entry(path: FilePath) -> Entry:
             metadata.st_mtime, timezone.utc
         ).isoformat(),
     )
+
+
+@log_errors
+def file_entry(path: FilePath) -> Entry:
+    """Read an ordinary file's size and modification time, without its contents.
+
+    Paths stay relative or absolute as supplied, except pathlib normalizes
+    redundant separators and './'. Missing/unreadable files raise OSError.
+    The timestamp uses UTC (+00:00), not the machine's local timezone.
+    Use safe_file_entry to log and skip unreadable files instead of raising.
+    """
+    return _file_entry(path)
+
+
+def safe_file_entry(path: FilePath) -> Optional[Entry]:
+    """Like file_entry, but an unreadable file is logged and skipped.
+
+    A missing file, a permission problem or any other OS error produces one
+    ERROR line with the file's path and the exact reason, and None is
+    returned, so one bad file never stops the whole run.
+    """
+    try:
+        return _file_entry(path)
+    except OSError as error:
+        logging.getLogger(__name__).error(
+            "Skipping file '%s': %s: %s", path, type(error).__name__, error
+        )
+        return None
 
 
 @log_errors

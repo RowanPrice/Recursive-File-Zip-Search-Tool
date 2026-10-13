@@ -4,10 +4,15 @@ import logging
 import os
 from datetime import datetime
 from typing import Iterator
-from zipfile import ZipFile, is_zipfile
+from zipfile import BadZipFile, ZipFile, is_zipfile
 
 from zipsearch.logging_setup import log_errors
 from zipsearch.models import Entry, ZipSource
+
+# Errors a broken ZIP can raise while it is opened or listed. These are
+# expected failures, so the safe iterator below logs and skips them instead
+# of crashing the whole run.
+SKIP_ZIP_ERRORS = (BadZipFile, RuntimeError, NotImplementedError, OSError)
 
 
 def is_zip(path: str) -> bool:
@@ -24,20 +29,20 @@ def is_zip(path: str) -> bool:
     return is_zipfile(path)
 
 
-@log_errors
-def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
-    """Yield one Entry for every member (file or folder) inside a ZIP.
+def _describe_source(path: ZipSource) -> str:
+    """Return the best display name for a path or an open file object.
 
-    path may be a file path or an open binary file object. Nothing is
-    extracted or read: only the ZIP's table of contents is used.
-    A bad ZIP raises zipfile.BadZipFile; later steps decide how to skip it.
+    A file object may or may not have a name; use "" when it does not.
     """
     if isinstance(path, (str, os.PathLike)):
-        container = os.fspath(path)
-    else:
-        # A file object may or may not have a name. Use "" when it does not.
-        name = getattr(path, "name", "")
-        container = name if isinstance(name, str) else ""
+        return os.fspath(path)
+    name = getattr(path, "name", "")
+    return name if isinstance(name, str) else ""
+
+
+def _iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
+    """Worker shared by the public iterators; see iter_zip_entries."""
+    container = _describe_source(path)
 
     # "with" closes the ZIP for us, even if something goes wrong.
     with ZipFile(path) as archive:
@@ -63,3 +68,40 @@ def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
                 encrypted=bool(info.flag_bits & 0x1),
                 last_modified=modified,
             )
+
+
+@log_errors
+def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
+    """Yield one Entry for every member (file or folder) inside a ZIP.
+
+    path may be a file path or an open binary file object. Nothing is
+    extracted or read: only the ZIP's table of contents is used.
+    A bad ZIP raises zipfile.BadZipFile; use iter_zip_entries_safe to log
+    and skip bad ZIPs instead of raising.
+    """
+    yield from _iter_zip_entries(path)
+
+
+def iter_zip_entries_safe(path: ZipSource) -> Iterator[Entry]:
+    """Like iter_zip_entries, but a bad ZIP is logged and skipped, not raised.
+
+    A corrupt, truncated or unreadable archive yields nothing, one ERROR line
+    with the ZIP's path and the exact reason goes to the log, and the run
+    carries on with the next file. Password-protected members that can still
+    be listed are yielded with encrypted=True, plus one WARNING each, because
+    their contents can never be read without the password.
+    """
+    try:
+        for entry in _iter_zip_entries(path):
+            if entry.encrypted:
+                logging.getLogger(__name__).warning(
+                    "Password-protected member '%s' in ZIP '%s': "
+                    "listed only, contents not read",
+                    entry.inner_path, entry.container_path,
+                )
+            yield entry
+    except SKIP_ZIP_ERRORS as error:
+        logging.getLogger(__name__).error(
+            "Skipping ZIP '%s': %s: %s",
+            _describe_source(path), type(error).__name__, error,
+        )
