@@ -1,10 +1,12 @@
 """Build metadata records for matched ordinary files and ZIP members."""
 
+import logging
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from stat import S_ISDIR
 from typing import Iterable, List, Optional, TypedDict
 
+from zipsearch.logging_setup import log_errors
 from zipsearch.categories import CategoryMatcher
 from zipsearch.models import Entry, Path as FilePath
 
@@ -24,6 +26,7 @@ class Result(TypedDict):
     last_modified: Optional[str]
 
 
+@log_errors
 def file_entry(path: FilePath) -> Entry:
     """Read an ordinary file's size and modification time, without its contents.
 
@@ -45,6 +48,7 @@ def file_entry(path: FilePath) -> Entry:
     )
 
 
+@log_errors
 def build_results(entries: Iterable[Entry], matcher: CategoryMatcher) -> List[Result]:
     """Return one dict per matching file, containing all its category names.
 
@@ -53,10 +57,13 @@ def build_results(entries: Iterable[Entry], matcher: CategoryMatcher) -> List[Re
     files and directories are left out. Input order is kept.
     """
     results: List[Result] = []
+    counts = dict.fromkeys(matcher.category_names, 0)
     for entry in entries:
         categories = matcher.match_entry(entry)
         if not categories:
             continue
+        for category in categories:
+            counts[category] += 1
         if entry.inner_path:
             # Member paths belong to the ZIP, not the operating system.
             path = PurePosixPath(entry.inner_path.replace("\\", "/"))
@@ -72,4 +79,7 @@ def build_results(entries: Iterable[Entry], matcher: CategoryMatcher) -> List[Re
             "filesizebytes": entry.size,
             "last_modified": entry.last_modified,
         })
+    logger = logging.getLogger(__name__)
+    for category, count in counts.items():
+        logger.info("Files matched in category %s: %d", category, count)
     return results
