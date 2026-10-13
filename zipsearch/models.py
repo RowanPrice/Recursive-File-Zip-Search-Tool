@@ -23,7 +23,8 @@ class Entry:
     file, otherwise the member path (nested levels use '!/'). is_zip is a hint
     that the entry is an archive; a reader must still validate the bytes.
     Directory and encrypted flags let later readers list but avoid reading
-    them.
+    them. last_modified is ISO8601: UTC for filesystem files, but ZIP
+    timestamps have no timezone. None means the timestamp is unavailable.
     """
 
     container_path: str
@@ -32,6 +33,7 @@ class Entry:
     is_zip: bool
     is_dir: bool = False
     encrypted: bool = False
+    last_modified: Optional[str] = None
 
 
 @dataclass(frozen=True)

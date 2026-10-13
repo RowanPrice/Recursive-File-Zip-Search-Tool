@@ -71,3 +71,25 @@ def test_is_zip_rejects_fake_and_missing(make_corrupt_zip, tmp_path):
     """Bad bytes and missing files return False instead of raising."""
     assert not is_zip(str(make_corrupt_zip()))
     assert not is_zip(str(tmp_path / "nope.zip"))
+
+
+def test_member_modification_time(tmp_path):
+    """Use the member's date, not the enclosing archive's filesystem date."""
+    from zipfile import ZipFile, ZipInfo
+
+    path = tmp_path / "dated.zip"
+    with ZipFile(path, "w") as archive:
+        archive.writestr(ZipInfo("folder/a.txt", (2020, 2, 3, 4, 5, 6)), "hi")
+    entry = next(iter_zip_entries(path))
+    assert entry.last_modified == "2020-02-03T04:05:06"
+    assert entry.size == 2
+
+
+def test_invalid_member_date_is_unavailable(tmp_path):
+    """A ZIP's invalid month is missing metadata, not a made-up date."""
+    from zipfile import ZipFile, ZipInfo
+
+    path = tmp_path / "invalid-date.zip"
+    with ZipFile(path, "w") as archive:
+        archive.writestr(ZipInfo("a.txt", (2020, 0, 3, 4, 5, 6)), "hi")
+    assert next(iter_zip_entries(path)).last_modified is None

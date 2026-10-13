@@ -1,6 +1,7 @@
 """List what is inside a ZIP file without extracting anything to disk."""
 
 import os
+from datetime import datetime
 from typing import Iterator
 from zipfile import ZipFile, is_zipfile
 
@@ -39,6 +40,12 @@ def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
     with ZipFile(path) as archive:
         for info in archive.infolist():
             is_dir = info.is_dir()
+            try:
+                # ZIP dates are local wall time, with no recorded timezone.
+                modified = datetime(*info.date_time).isoformat()
+            except ValueError:
+                # Some ZIP writers store invalid dates. Do not invent one.
+                modified = None
             yield Entry(
                 container_path=container,
                 inner_path=info.filename,
@@ -48,4 +55,5 @@ def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
                 is_dir=is_dir,
                 # Bit 0 of flag_bits is set when the member is password-protected.
                 encrypted=bool(info.flag_bits & 0x1),
+                last_modified=modified,
             )
