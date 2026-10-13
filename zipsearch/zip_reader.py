@@ -1,10 +1,12 @@
 """List what is inside a ZIP file without extracting anything to disk."""
 
+import logging
 import os
 from datetime import datetime
 from typing import Iterator
 from zipfile import ZipFile, is_zipfile
 
+from zipsearch.logging_setup import log_errors
 from zipsearch.models import Entry, ZipSource
 
 
@@ -22,6 +24,7 @@ def is_zip(path: str) -> bool:
     return is_zipfile(path)
 
 
+@log_errors
 def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
     """Yield one Entry for every member (file or folder) inside a ZIP.
 
@@ -45,6 +48,9 @@ def iter_zip_entries(path: ZipSource) -> Iterator[Entry]:
                 modified = datetime(*info.date_time).isoformat()
             except ValueError:
                 # Some ZIP writers store invalid dates. Do not invent one.
+                logging.getLogger(__name__).warning(
+                    "Invalid ZIP timestamp for %s in %s", info.filename, container
+                )
                 modified = None
             yield Entry(
                 container_path=container,
