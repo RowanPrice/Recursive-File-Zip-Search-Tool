@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 from typing import Iterable
 
+from zipsearch.logging_setup import log_errors
 from zipsearch.models import Path as FilePath
 from zipsearch.results import Result
 
@@ -21,6 +22,7 @@ COLUMNS = (
 CATEGORY_SEPARATOR = "; "
 
 
+@log_errors
 def write_results_csv(results: Iterable[Result], path: FilePath) -> None:
     """Save results as a CSV file: a header row, then one row per result.
 
