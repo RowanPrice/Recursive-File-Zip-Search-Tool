@@ -5,6 +5,7 @@ from fnmatch import fnmatchcase
 from pathlib import PurePosixPath
 from typing import List, Mapping, Sequence
 
+from zipsearch.logging_setup import log_errors
 from zipsearch.models import Entry, Path
 
 CategoryConfig = Mapping[str, Mapping[str, Sequence[str]]]
@@ -20,6 +21,7 @@ class CategoryMatcher:
     matching category in config order, or [] when nothing matches.
     """
 
+    @log_errors
     def __init__(self, categories: CategoryConfig) -> None:
         """Validate and copy rules so later edits cannot change this matcher."""
         if not isinstance(categories, Mapping):
@@ -43,6 +45,11 @@ class CategoryMatcher:
                     raise ValueError("Extensions cannot contain paths or globs")
             self._rules.append((category, extensions, patterns))
 
+    @property
+    def category_names(self):
+        """Names in config order, including categories with no matches."""
+        return tuple(category for category, _extensions, _patterns in self._rules)
+
     @staticmethod
     def _strings(rules, key, category):
         """Require a list/tuple of non-empty strings, not a single string."""
@@ -57,6 +64,7 @@ class CategoryMatcher:
             )
         return tuple(value.lower() for value in values)
 
+    @log_errors
     def match(self, filename: str) -> List[str]:
         """Return category names for a normal path or a ZIP member name.
 
@@ -74,6 +82,7 @@ class CategoryMatcher:
             or any(fnmatchcase(name, pattern) for pattern in patterns)
         ]
 
+    @log_errors
     def match_entry(self, entry: Entry) -> List[str]:
         """Check the member's name inside a ZIP, or a plain file's own path.
 
@@ -85,6 +94,7 @@ class CategoryMatcher:
         return self.match(entry.inner_path or entry.container_path)
 
 
+@log_errors
 def load_categories(path: Path) -> CategoryMatcher:
     """Read a UTF-8 JSON config and build the same matcher used with a dict.
 
