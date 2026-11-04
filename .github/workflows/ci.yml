@@ -9,13 +9,19 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # GitHub's newest runner image (ubuntu-latest) can no longer install
+    # Python 3.8, so the 3.8 job runs on the older ubuntu-22.04 image.
+    # The other versions stay on ubuntu-latest.
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       # Keep going on the other Python versions if one of them fails,
       # so you can see every failure at once.
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.10", "3.12"]
+        include:
+          - python-version: "3.8"
+            os: ubuntu-22.04
     steps:
       # Download the repository code onto the runner machine.
       - uses: actions/checkout@v4
