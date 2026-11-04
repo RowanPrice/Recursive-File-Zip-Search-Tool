@@ -1,7 +1,13 @@
 {
   "documents": {"extensions": [".txt", ".pdf", ".docx"]},
   "images": {"extensions": [".png", ".jpg", ".jpeg"]},
-  "reports": {"patterns": ["report_*", "*_report.*"]},
+  "reports": {"patterns": ["*report*"]},
   "python": {"extensions": [".py"], "patterns": ["requirements*.txt"]},
-  "markdown": {"extensions": [".md"]}
+  "markdown": {"extensions": [".md"]},
+  "invoices": {"patterns": ["inv-*", "*invoice*"]},
+  "scans": {"extensions": [".dcm", ".stl", ".jpg"]},
+  "spreadsheets": {"extensions": [".xlsx", ".csv"]},
+  "presentations": {"extensions": [".pptx", ".ppt"]},
+  "contracts": {"patterns": ["*contract*", "*agreement*"]},
+  "receipts": {"patterns": ["*receipt*"]}
 }
