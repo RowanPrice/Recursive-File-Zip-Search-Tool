@@ -41,6 +41,22 @@ To see all the options at any time:
 python main.py --help
 ```
 
+## Try it out with sample files
+
+The project comes with a small script that makes pretend business files, so you can test the tool without using your own files:
+
+```bash
+python examples/make_business_samples.py
+```
+
+This creates a folder called `business_samples` (inside `examples`) with 15 small files - invoices, scans, spreadsheets, reports and more - plus a zip file with 11 of them packed inside. Now search that folder:
+
+```bash
+python main.py examples/business_samples
+```
+
+The matches land in `results.csv`, including the ones found inside the zip. Delete the `business_samples` folder whenever you like; run the script again to remake it.
+
 ## The options
 
 | Option | What it does | Default |
@@ -66,15 +82,24 @@ Categories are rules that decide which files end up in the CSV. A file that matc
 {
   "documents": {"extensions": [".txt", ".pdf", ".docx"]},
   "images": {"extensions": [".png", ".jpg", ".jpeg"]},
-  "reports": {"patterns": ["report_*", "*_report.*"]},
-  "python": {"extensions": [".py"], "patterns": ["requirements*.txt"]}
+  "reports": {"patterns": ["*report*"]},
+  "python": {"extensions": [".py"], "patterns": ["requirements*.txt"]},
+  "markdown": {"extensions": [".md"]},
+  "invoices": {"patterns": ["inv-*", "*invoice*"]},
+  "scans": {"extensions": [".dcm", ".stl", ".jpg"]},
+  "spreadsheets": {"extensions": [".xlsx", ".csv"]},
+  "presentations": {"extensions": [".pptx", ".ppt"]},
+  "contracts": {"patterns": ["*contract*", "*agreement*"]},
+  "receipts": {"patterns": ["*receipt*"]}
 }
 ```
+
+The first five are general categories. The rest are business ones: invoices, scans (medical scans, 3D models and photos), spreadsheets, presentations, contracts and receipts. A file can match more than one category - a `.jpg` photo is both an image and a scan, so it gets one row in the CSV listing both.
 
 Each category has a name and one or both of:
 
 - `extensions` - file endings. Each must start with a dot, like `".pdf"`.
-- `patterns` - name patterns where `*` means "any text" and `?` means "any one character". For example `report_*` matches `report_2026.xlsx`.
+- `patterns` - name patterns where `*` means "any text" and `?` means "any one character". For example `*report*` matches `report_2026.xlsx`.
 
 A file only needs to match **one** rule to join a category. Matching ignores upper and lower case, and a file can belong to several categories.
 
@@ -91,14 +116,14 @@ One row per matched file, with these columns:
 | `folder_location` | The folder it is in (for a file inside a zip, the folder path inside the zip) |
 | `zipfile` | The zip it came from, or empty if it is a normal file |
 | `filesizebytes` | Size in bytes |
-| `last_modified` | Last changed date and time (UTC) |
+| `last_modified` | Last changed date and time. For normal files this is in UTC. For files inside a zip it is the time stored in the zip, with no timezone. |
 
 ## When something goes wrong
 
 **The tool keeps going and notes the problem in the log** when it hits:
 
 - a zip file that is damaged (corrupt) - it is skipped
-- a password-protected zip - the files inside are still listed and marked as encrypted in the log, but their contents are not read
+- a password-protected zip - the files inside are still listed and marked as encrypted in the log, but their contents are not read. If an encrypted file's name matches a category, it still appears in `results.csv` as an ordinary row.
 - a file or folder it is not allowed to open (permission denied) - it is skipped
 - a file name with unusual characters - it is saved with a readable escape code instead of crashing
 
