@@ -109,15 +109,23 @@ def test_generator_failure_during_results_is_logged(logs):
     assert "build_results failed" in logs[1].read_text()
 
 
-def test_walk_logs_permission_error(logs, monkeypatch):
+def test_walk_logs_permission_error(logs, monkeypatch, tmp_path):
     from zipsearch import walker
 
-    def fake_walk(root, onerror):
-        onerror(PermissionError(13, "Permission denied", "private"))
-        yield root, [], ["ok.txt"]
+    root = tmp_path / "tree"
+    (root / "private").mkdir(parents=True)
+    (root / "ok").mkdir()
+    (root / "ok" / "ok.txt").write_text("hi")
 
-    monkeypatch.setattr(walker.os, "walk", fake_walk)
-    assert list(walker.walk(Path("root"))) == [str(Path("root") / "ok.txt")]
+    real_list_folder = walker._list_folder
+
+    def fake_list_folder(folder):
+        if folder.name == "private":
+            raise PermissionError(13, "Permission denied", "private")
+        return real_list_folder(folder)
+
+    monkeypatch.setattr(walker, "_list_folder", fake_list_folder)
+    assert list(walker.walk(root)) == [str(root / "ok" / "ok.txt")]
     text = logs[1].read_text()
     assert "ERROR" in text and "private" in text
 
