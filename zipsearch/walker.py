@@ -1,34 +1,64 @@
 """Walk ordinary folders without opening or extracting any archives."""
 
 import logging
-import os
+from pathlib import Path
 from typing import Iterator, List, Optional, Tuple, Union
 
 from zipsearch.logging_setup import log_errors
 
-Path = Union[str, os.PathLike]
+PathLike = Union[str, Path]
 Directory = Tuple[str, List[str], List[str]]
 
 
+def _list_folder(folder: Path) -> Tuple[List[str], List[str]]:
+    """Split one folder's entries into subfolder names and file names.
+
+    A symlink to a folder counts as a subfolder name here; the caller decides
+    whether to recurse into it. Raises OSError (such as PermissionError) when
+    the folder cannot be listed, like os.walk's scandir does.
+    """
+    subfolders = []
+    files = []
+    for entry in folder.iterdir():
+        if entry.is_dir():
+            subfolders.append(entry.name)
+        else:
+            files.append(entry.name)
+    return subfolders, files
+
+
 @log_errors
-def walk_directories(root: Path) -> Iterator[Directory]:
+def walk_directories(root: PathLike) -> Iterator[Directory]:
     """Yield (folder, subfolder names, file names), just like os.walk.
 
     Keep the operating system's order, log inaccessible folders and continue,
     and do not follow directory symlinks. This view preserves the original
-    CLI's
-    directory headings, including empty folders.
+    CLI's directory headings, including empty folders.
     """
     def report_error(error):
         logging.getLogger(__name__).error(
             "Cannot access folder %s: %s", error.filename, error
         )
 
-    yield from os.walk(root, onerror=report_error)
+    def visit(folder: Path) -> Iterator[Directory]:
+        try:
+            subfolders, files = _list_folder(folder)
+        except OSError as error:
+            report_error(error)
+            return
+        yield str(folder), subfolders, files
+        for name in subfolders:
+            child = folder / name
+            # os.walk's followlinks=False: name a folder symlink but never
+            # recurse through it, so loops cannot hang the walk.
+            if not child.is_symlink():
+                yield from visit(child)
+
+    yield from visit(Path(root))
 
 
 @log_errors
-def walk(root: Path) -> Iterator[str]:
+def walk(root: PathLike) -> Iterator[str]:
     """Yield each file's path lazily, including ZIPs as ordinary files for now.
 
     A generator produces one item at a time rather than building a big list.
@@ -36,10 +66,10 @@ def walk(root: Path) -> Iterator[str]:
     """
     for folder, _directories, files in walk_directories(root):
         for name in files:
-            yield os.path.join(folder, name)
+            yield str(Path(folder) / name)
 
 
-def root_problem(root: Path) -> Optional[str]:
+def root_problem(root: PathLike) -> Optional[str]:
     """Return a short reason the root folder cannot be searched, else None.
 
     main.py uses this to stop with a clear, helpful message instead of a
@@ -47,16 +77,15 @@ def root_problem(root: Path) -> Optional[str]:
     get their own reason. Readability is checked by really opening the
     folder listing, because permission rules differ between systems.
     """
-    path = os.fspath(root)
-    if not os.path.exists(path):
+    path = Path(root)
+    if not path.exists():
         return "the folder does not exist"
-    if not os.path.isdir(path):
+    if not path.is_dir():
         return "it is a file, not a folder"
     try:
         # Opening the listing is the only reliable permission check.
-        with os.scandir(path) as entries:
-            for _entry in entries:
-                break
+        for _entry in path.iterdir():
+            break
     except PermissionError:
         return "permission denied"
     except OSError as error:
