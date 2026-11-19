@@ -10,9 +10,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def run_cli(*args):
-    """Run main.py in a subprocess, exactly as a user would."""
+    """Run file_audit.py in a subprocess, exactly as a user would."""
     return subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "main.py"), *[str(a) for a in args]],
+        [sys.executable, str(PROJECT_ROOT / "file_audit.py"),
+         *[str(a) for a in args]],
         capture_output=True, text=True,
     )
 
@@ -25,7 +26,7 @@ def read_csv(path):
 
 def test_run_searches_zips_and_writes_csv(tmp_path, make_zip, make_corrupt_zip):
     """Ordinary files and good ZIP members reach the CSV; a corrupt ZIP is
-    logged and skipped; the listing still prints; the exit code stays 0."""
+    logged and skipped; nothing is printed; the exit code stays 0."""
     root = tmp_path / "tree"
     root.mkdir()
     (root / "notes.txt").write_text("hello")
@@ -38,14 +39,18 @@ def test_run_searches_zips_and_writes_csv(tmp_path, make_zip, make_corrupt_zip):
     result = run_cli(root, "--log-file", log, "--csv", out)
 
     assert result.returncode == 0
-    assert "[FILE] notes.txt" in result.stdout
-    assert "CSV written: {} (".format(out) in result.stdout
+    assert result.stdout == ""
     rows = read_csv(out)
-    by_name = {row["filename"]: row for row in rows}
+    by_name = {row["Filename"]: row for row in rows}
     # The bundled default categories cover .txt and .png.
-    assert by_name["notes.txt"]["category"] == "documents"
-    assert by_name["photo.png"]["category"] == "images"
-    assert by_name["inner.txt"]["zipfile"].endswith("good.zip")
+    assert by_name["notes.txt"]["Category"] == "documents"
+    assert by_name["photo.png"]["Category"] == "images"
+    assert by_name["inner.txt"]["Zipfile"].endswith("good.zip")
+    # Folder locations are full absolute paths; a file at a ZIP's top
+    # level shows the ZIP's root as "/", never ".".
+    assert by_name["notes.txt"]["FolderLocation"] == str(root.resolve())
+    assert by_name["inner.txt"]["FolderLocation"] == "/"
+    assert Path(by_name["inner.txt"]["Zipfile"]).is_absolute()
     text = log.read_text()
     assert "Skipping ZIP" in text and "corrupt.zip" in text
     assert "Files matched in category documents: 2" in text
@@ -67,7 +72,7 @@ def test_run_with_custom_categories_json(tmp_path):
                      "--categories", categories, "--csv", out)
 
     assert result.returncode == 0
-    assert [row["filename"] for row in read_csv(out)] == ["report_oct.txt"]
+    assert [row["Filename"] for row in read_csv(out)] == ["report_oct.txt"]
 
 
 def test_missing_categories_file_fails_clearly(tmp_path):
@@ -93,6 +98,50 @@ def test_bad_categories_json_fails_clearly(tmp_path):
     assert "Traceback" not in result.stderr
 
 
+def test_bad_category_rule_fails_clearly(tmp_path):
+    """A rule like 'pdf' without the dot is one clear ERROR, no traceback."""
+    categories = tmp_path / "cats.json"
+    categories.write_text('{"docs": {"extensions": ["pdf"]}}')
+    result = run_cli(tmp_path, "--log-file", tmp_path / "run.log",
+                     "--categories", categories, "--csv", tmp_path / "out.csv")
+    assert result.returncode == 1
+    assert "Cannot load categories from" in result.stderr
+    assert "Extensions must start with" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert not (tmp_path / "out.csv").exists()
+
+
+def test_root_folder_via_option(tmp_path):
+    """--root names the search folder instead of the positional argument."""
+    root = tmp_path / "tree"
+    root.mkdir()
+    (root / "notes.txt").write_text("hello")
+    out = tmp_path / "results.csv"
+
+    result = run_cli("--root", root, "--log-file", tmp_path / "run.log",
+                     "--csv", out)
+
+    assert result.returncode == 0
+    assert [row["Filename"] for row in read_csv(out)] == ["notes.txt"]
+
+
+def test_root_folder_required(tmp_path):
+    """No root folder at all is a usage error, never a search of '.'."""
+    result = run_cli("--log-file", tmp_path / "run.log",
+                     "--csv", tmp_path / "out.csv")
+    assert result.returncode == 2
+    assert "root folder is required" in result.stderr
+
+
+def test_root_folder_given_once(tmp_path):
+    """The positional argument and --root cannot be mixed."""
+    result = run_cli(tmp_path, "--root", tmp_path,
+                     "--log-file", tmp_path / "run.log",
+                     "--csv", tmp_path / "out.csv")
+    assert result.returncode == 2
+    assert "give the root folder once" in result.stderr
+
+
 def test_unwritable_csv_path_fails_clearly(tmp_path):
     """An unsavable CSV is reported clearly after the search, with exit 1."""
     (tmp_path / "file.txt").write_text("hello")
@@ -116,6 +165,6 @@ def test_encrypted_zip_members_reach_csv_flagged_in_log(
     result = run_cli(root, "--log-file", log, "--csv", out)
     assert result.returncode == 0
     rows = read_csv(out)
-    assert [row["filename"] for row in rows] == ["secret.txt"]
-    assert rows[0]["zipfile"].endswith("locked.zip")
+    assert [row["Filename"] for row in rows] == ["secret.txt"]
+    assert rows[0]["Zipfile"].endswith("locked.zip")
     assert "Password-protected member 'secret.txt'" in log.read_text()
