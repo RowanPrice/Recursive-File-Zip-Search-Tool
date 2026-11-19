@@ -9,14 +9,15 @@ from zipsearch.logging_setup import log_errors
 from zipsearch.models import Path as FilePath
 from zipsearch.results import Result
 
-# Column order: the same as the fields of a Result dict.
+# Column order: the same as the fields of a Result dict. The names are the
+# CSV's header row, so they use the PascalCase style Rowan asked for.
 COLUMNS = (
-    "category",
-    "filename",
-    "folder_location",
-    "zipfile",
-    "filesizebytes",
-    "last_modified",
+    "Category",
+    "Filename",
+    "FolderLocation",
+    "Zipfile",
+    "FileSizeBytes",
+    "LastModified",
 )
 
 # Several categories share one cell, so they need a separator.
@@ -51,7 +52,7 @@ def _write_results_csv(results: Iterable[Result], path: FilePath) -> None:
             row = []
             for column in COLUMNS:
                 value = result[column]
-                if column == "category":
+                if column == "Category":
                     value = CATEGORY_SEPARATOR.join(value)
                 elif value is None:
                     value = ""
