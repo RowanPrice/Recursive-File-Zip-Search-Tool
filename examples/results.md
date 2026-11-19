@@ -42,26 +42,26 @@ like this (illustrative metadata):
 
 ```python
 {
-    "category": ["documents", "reports"],
-    "filename": "report.txt",
-    "folder_location": "docs",
-    "zipfile": "my_files.zip",
-    "filesizebytes": 120,
-    "last_modified": "2020-02-03T04:05:06",
+    "Category": ["documents", "reports"],
+    "Filename": "report.txt",
+    "FolderLocation": "docs",
+    "Zipfile": "my_files.zip",
+    "FileSizeBytes": 120,
+    "LastModified": "2020-02-03T04:05:06",
 }
 ```
 
 ## Field meanings
 
-- `category`: every matching category, in config order.
-- `filename`: the file's name without its folders.
-- `folder_location`: the containing filesystem folder for an ordinary file,
-  or the internal containing folder for a ZIP member. `.` means the current
-  folder or the root of the ZIP. Paths stay relative or absolute as supplied;
-  pathlib tidies repeated separators and `./`.
-- `zipfile`: the ZIP's path for a member; an empty string for an ordinary file.
-- `filesizebytes`: byte size, uncompressed for ZIP members.
-- `last_modified`: ISO8601 date/time. Ordinary-file times use UTC (`+00:00`).
+- `Category`: every matching category, in config order.
+- `Filename`: the file's name without its folders.
+- `FolderLocation`: the containing filesystem folder for an ordinary file,
+  or the internal containing folder for a ZIP member. `/` means the root of
+  the ZIP. The run command searches from the resolved root, so real runs
+  record full absolute paths; pathlib tidies repeated separators and `./`.
+- `Zipfile`: the ZIP's path for a member; an empty string for an ordinary file.
+- `FileSizeBytes`: byte size, uncompressed for ZIP members.
+- `LastModified`: ISO8601 date/time. Ordinary-file times use UTC (`+00:00`).
   ZIP member dates have no timezone, so we keep the stored wall time without
   adding a guessed offset. An invalid or unavailable date is `None`, which
   becomes `null` if the result is later converted to JSON.
@@ -76,5 +76,5 @@ because no file contents are read.
 At runtime, each result is still a normal dict. `Entry.last_modified` defaults
 to `None`, so older code that creates `Entry` records still works.
 
-`main.py` is unchanged. These examples call the building blocks directly;
-the normal run command still prints its folder/file listing.
+These examples call the building blocks directly; the normal run command
+(`file_audit.py`) wires them together.
