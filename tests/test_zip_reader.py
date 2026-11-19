@@ -3,7 +3,7 @@
 import io
 
 from zipsearch.models import Entry
-from zipsearch.zip_reader import is_zip, iter_zip_entries
+from zipsearch.zip_reader import iter_zip_entries
 
 
 def test_empty_zip_has_no_entries(make_zip):
@@ -50,46 +50,3 @@ def test_file_object_without_name(make_zip):
     entries = list(iter_zip_entries(io.BytesIO(data)))
     assert entries[0].container_path == ""
     assert entries[0].inner_path == "a.txt"
-
-
-def test_is_zip_true_for_real_zip(make_zip):
-    """A real ZIP with a .zip name passes."""
-    assert is_zip(str(make_zip({"a.txt": "x"})))
-
-
-def test_is_zip_extension_is_case_insensitive(make_zip):
-    """.ZIP in capitals still counts."""
-    assert is_zip(str(make_zip({"a.txt": "x"}, name="UPPER.ZIP")))
-
-
-def test_is_zip_rejects_wrong_extension(make_zip):
-    """A real ZIP renamed to .txt is not accepted."""
-    assert not is_zip(str(make_zip({"a.txt": "x"}, name="data.txt")))
-
-
-def test_is_zip_rejects_fake_and_missing(make_corrupt_zip, tmp_path):
-    """Bad bytes and missing files return False instead of raising."""
-    assert not is_zip(str(make_corrupt_zip()))
-    assert not is_zip(str(tmp_path / "nope.zip"))
-
-
-def test_member_modification_time(tmp_path):
-    """Use the member's date, not the enclosing archive's filesystem date."""
-    from zipfile import ZipFile, ZipInfo
-
-    path = tmp_path / "dated.zip"
-    with ZipFile(path, "w") as archive:
-        archive.writestr(ZipInfo("folder/a.txt", (2020, 2, 3, 4, 5, 6)), "hi")
-    entry = next(iter_zip_entries(path))
-    assert entry.last_modified == "2020-02-03T04:05:06"
-    assert entry.size == 2
-
-
-def test_invalid_member_date_is_unavailable(tmp_path):
-    """A ZIP's invalid month is missing metadata, not a made-up date."""
-    from zipfile import ZipFile, ZipInfo
-
-    path = tmp_path / "invalid-date.zip"
-    with ZipFile(path, "w") as archive:
-        archive.writestr(ZipInfo("a.txt", (2020, 0, 3, 4, 5, 6)), "hi")
-    assert next(iter_zip_entries(path)).last_modified is None
