@@ -11,7 +11,7 @@ from zipfile import BadZipFile, ZipFile
 
 import pytest
 
-from zipsearch.models import Entry, SearchHit
+from zipsearch.models import Entry
 from zipsearch.walker import walk, walk_directories
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -60,27 +60,20 @@ def test_directory_symlinks_not_followed(tmp_path):
     assert list(walk(tmp_path)) == [str(real / "file.txt")]
 
 
-def test_cli_preserves_listing(tmp_path):
-    """Compare the CLI output with the original algorithm, including
-    empties."""
+def test_cli_runs_quietly_and_writes_csv(tmp_path):
+    """The CLI no longer prints a folder listing: stdout stays empty, the
+    story is in the log, and matches still reach the CSV."""
     (tmp_path / "empty").mkdir()
     (tmp_path / "file.txt").write_text("hello")
-    expected = "Walking: {}\n".format(tmp_path)
-    for folder, dirs, files in os.walk(tmp_path):
-        expected += "\nDirectory: {}\n".format(folder)
-        expected += "".join("  [DIR] {}\n".format(name) for name in dirs)
-        expected += "".join("  [FILE] {}\n".format(name) for name in files)
     csv_path = tmp_path.parent / (tmp_path.name + ".csv")
     result = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "main.py"), str(tmp_path),
+        [sys.executable, str(PROJECT_ROOT / "file_audit.py"), str(tmp_path),
          "--log-file", str(tmp_path.parent / (tmp_path.name + ".log")),
          "--csv", str(csv_path)],
         capture_output=True, text=True,
     )
     assert result.returncode == 0
-    # file.txt matches the bundled categories, so one result reaches the CSV.
-    expected += "CSV written: {} (1 matched file(s))\n".format(csv_path)
-    assert result.stdout == expected
+    assert result.stdout == ""
     assert csv_path.exists()
     assert "INFO zipsearch: Run started" in result.stderr
     assert "INFO zipsearch: Run ended (completed)" in result.stderr
@@ -90,7 +83,7 @@ def test_cli_invalid_root(tmp_path):
     """Keep the error meaning, stderr stream and exit status; add log context."""
     missing = tmp_path / "missing"
     result = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "main.py"), str(missing),
+        [sys.executable, str(PROJECT_ROOT / "file_audit.py"), str(missing),
          "--log-file", str(tmp_path / "run.log")],
         capture_output=True, text=True,
     )
@@ -104,12 +97,11 @@ def test_cli_invalid_root(tmp_path):
 
 
 def test_shared_records():
-    """Shared entries are immutable; line details are optional on name hits."""
+    """Shared entries are immutable and carry their optional flags."""
     entry = Entry("outer.zip", "folder/file.txt", 6, False)
     assert not entry.is_dir
     assert not entry.encrypted
-    assert SearchHit(entry).line_number is None
-    assert SearchHit(entry, 1, "hello").line_text == "hello"
+    assert entry.last_modified is None
     with pytest.raises(FrozenInstanceError):
         entry.size = 7
 
