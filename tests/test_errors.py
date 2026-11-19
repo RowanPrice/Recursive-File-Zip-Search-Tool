@@ -156,7 +156,7 @@ def test_cli_unreadable_root_fails_clearly(tmp_path):
     folder.chmod(0)
     try:
         result = subprocess.run(
-            [sys.executable, str(PROJECT_ROOT / "main.py"), str(folder),
+            [sys.executable, str(PROJECT_ROOT / "file_audit.py"), str(folder),
              "--log-file", str(tmp_path / "run.log")],
             capture_output=True, text=True,
         )
