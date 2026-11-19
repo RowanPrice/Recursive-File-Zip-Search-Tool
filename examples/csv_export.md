@@ -16,8 +16,8 @@ write_results_csv(results, "results.csv")
 ```
 
 The columns come in the same order as the fields of each result:
-`category`, `filename`, `folder_location`, `zipfile`, `filesizebytes`,
-`last_modified`.
+`Category`, `Filename`, `FolderLocation`, `Zipfile`, `FileSizeBytes`,
+`LastModified`.
 
 ## How the file is written
 
@@ -34,4 +34,4 @@ The columns come in the same order as the fields of each result:
 - **Existing file.** A file already at that path is replaced. The folder must
   already exist, otherwise Python raises `OSError`.
 
-`main.py` is unchanged; this step only adds the function.
+`file_audit.py` is unchanged; this step only adds the function.
