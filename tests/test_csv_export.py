@@ -9,12 +9,12 @@ from zipsearch.csv_export import COLUMNS, write_results_csv
 
 def make_result(**changes):
     result = {
-        "category": ["documents"],
-        "filename": "report.txt",
-        "folder_location": "docs",
-        "zipfile": "",
-        "filesizebytes": 120,
-        "last_modified": "2020-02-03T04:05:06+00:00",
+        "Category": ["documents"],
+        "Filename": "report.txt",
+        "FolderLocation": "docs",
+        "Zipfile": "",
+        "FileSizeBytes": 120,
+        "LastModified": "2020-02-03T04:05:06+00:00",
     }
     result.update(changes)
     return result
@@ -33,8 +33,8 @@ def test_header_and_row_follow_array_order(tmp_path):
         ["documents", "report.txt", "docs", "", "120",
          "2020-02-03T04:05:06+00:00"],
     ]
-    assert COLUMNS == ("category", "filename", "folder_location", "zipfile",
-                       "filesizebytes", "last_modified")
+    assert COLUMNS == ("Category", "Filename", "FolderLocation", "Zipfile",
+                       "FileSizeBytes", "LastModified")
 
 
 def test_file_starts_with_utf8_bom(tmp_path):
@@ -51,7 +51,7 @@ def test_empty_results_write_header_only(tmp_path):
 
 def test_several_categories_share_one_cell(tmp_path):
     path = tmp_path / "out.csv"
-    write_results_csv([make_result(category=["documents", "reports"])], path)
+    write_results_csv([make_result(Category=["documents", "reports"])], path)
     rows = read_rows(path)
     assert len(rows) == 2
     assert rows[1][0] == "documents; reports"
@@ -61,7 +61,7 @@ def test_commas_quotes_and_newlines_stay_in_their_cells(tmp_path):
     path = tmp_path / "out.csv"
     name = 'a, "quoted"\nname.txt'
     folder = 'dir, with "quotes"'
-    write_results_csv([make_result(filename=name, folder_location=folder)], path)
+    write_results_csv([make_result(Filename=name, FolderLocation=folder)], path)
     rows = read_rows(path)
     assert len(rows) == 2
     assert len(rows[1]) == len(COLUMNS)
@@ -72,20 +72,20 @@ def test_commas_quotes_and_newlines_stay_in_their_cells(tmp_path):
 def test_non_ascii_text_round_trips(tmp_path):
     path = tmp_path / "out.csv"
     name = "caf\u00e9 \u65e5\u672c\u8a9e \U0001f600.txt"
-    write_results_csv([make_result(filename=name)], path)
+    write_results_csv([make_result(Filename=name)], path)
     assert read_rows(path)[1][1] == name
 
 
 def test_missing_date_is_an_empty_cell(tmp_path):
     path = tmp_path / "out.csv"
-    write_results_csv([make_result(last_modified=None)], path)
+    write_results_csv([make_result(LastModified=None)], path)
     assert read_rows(path)[1][5] == ""
 
 
 def test_zip_member_row_and_zero_size(tmp_path):
     path = tmp_path / "out.csv"
     write_results_csv(
-        [make_result(zipfile="my files.zip", filesizebytes=0)], path)
+        [make_result(Zipfile="my files.zip", FileSizeBytes=0)], path)
     row = read_rows(path)[1]
     assert row[3] == "my files.zip"
     assert row[4] == "0"
@@ -100,7 +100,7 @@ def test_existing_file_is_replaced(tmp_path):
 
 def test_accepts_a_generator_and_string_path(tmp_path):
     path = tmp_path / "out.csv"
-    write_results_csv((make_result(filename=n) for n in "ab"), str(path))
+    write_results_csv((make_result(Filename=n) for n in "ab"), str(path))
     assert [row[1] for row in read_rows(path)[1:]] == ["a", "b"]
 
 

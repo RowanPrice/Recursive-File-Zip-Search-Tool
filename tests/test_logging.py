@@ -8,7 +8,9 @@ from zipfile import BadZipFile
 
 import pytest
 
-from zipsearch.categories import CategoryMatcher, load_categories
+from zipsearch.categories import (
+    CategoryMatcher, load_categories, safe_load_categories,
+)
 from zipsearch.csv_export import write_results_csv
 from zipsearch.logging_setup import setup_logging
 from zipsearch.models import Entry
@@ -93,10 +95,24 @@ def test_helper_errors_are_logged_and_still_raise(logs, tmp_path, operation):
     assert "Traceback" in text
 
 
-def test_invalid_categories_logged(logs):
+def test_invalid_categories_raise_without_logging(logs):
+    """Bad rules raise for the caller to report; nothing hits the log, so the
+    CLI's single clear line below is the only message the user ever sees."""
     with pytest.raises(ValueError):
         CategoryMatcher({"bad": {}})
-    assert "ERROR" in logs[1].read_text()
+    assert logs[1].read_text() == ""
+
+
+def test_safe_load_categories_logs_one_clear_line(logs, tmp_path):
+    """A bad config file becomes one ERROR line with the exact reason, and
+    never a traceback."""
+    bad = tmp_path / "cats.json"
+    bad.write_text('{"docs": {"extensions": ["pdf"]}}')
+    assert safe_load_categories(bad) is None
+    text = logs[1].read_text()
+    assert "Cannot load categories from" in text
+    assert "Extensions must start with" in text
+    assert "Traceback" not in text
 
 
 def test_generator_failure_during_results_is_logged(logs):
@@ -162,14 +178,14 @@ def test_cli_start_root_end_and_file_match(tmp_path):
     root.mkdir()
     (root / "file.txt").write_text("hello")
     log = tmp_path / "run.log"
-    main = Path(__file__).resolve().parents[1] / "main.py"
+    main = Path(__file__).resolve().parents[1] / "file_audit.py"
     result = subprocess.run(
         [sys.executable, str(main), str(root), "--log-file", str(log),
          "--csv", str(tmp_path / "out.csv")],
         capture_output=True, text=True,
     )
     assert result.returncode == 0
-    assert "[FILE] file.txt" in result.stdout
+    assert result.stdout == ""
     text = log.read_text()
     assert result.stderr == text
     assert "Run started" in text
@@ -181,7 +197,7 @@ def test_cli_cannot_open_log_file(tmp_path):
     import subprocess
     import sys
 
-    main = Path(__file__).resolve().parents[1] / "main.py"
+    main = Path(__file__).resolve().parents[1] / "file_audit.py"
     result = subprocess.run(
         [sys.executable, str(main), str(tmp_path), "--log-file",
          str(tmp_path / "missing" / "run.log")],
@@ -194,10 +210,10 @@ def test_cli_cannot_open_log_file(tmp_path):
 
 
 def test_cli_unexpected_failure_still_logs_end(logs, tmp_path, monkeypatch):
-    import main
+    import file_audit as main
 
     monkeypatch.setattr(main, "setup_logging", lambda path: logging.getLogger("zipsearch"))
-    monkeypatch.setattr("sys.argv", ["main.py", str(tmp_path)])
+    monkeypatch.setattr("sys.argv", ["file_audit.py", str(tmp_path)])
 
     def fail(root):
         raise RuntimeError("unexpected failure")
@@ -211,10 +227,10 @@ def test_cli_unexpected_failure_still_logs_end(logs, tmp_path, monkeypatch):
 
 
 def test_cli_interrupt_still_logs_end(logs, tmp_path, monkeypatch):
-    import main
+    import file_audit as main
 
     monkeypatch.setattr(main, "setup_logging", lambda path: logging.getLogger("zipsearch"))
-    monkeypatch.setattr("sys.argv", ["main.py", str(tmp_path)])
+    monkeypatch.setattr("sys.argv", ["file_audit.py", str(tmp_path)])
 
     def interrupt(root):
         raise KeyboardInterrupt

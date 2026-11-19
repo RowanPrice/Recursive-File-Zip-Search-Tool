@@ -13,7 +13,7 @@ No extra packages to install.
 
 ## Quick start
 
-1. Open a terminal and go to the project folder (the one that contains `main.py`):
+1. Open a terminal and go to the project folder (the one that contains `file_audit.py`):
 
    ```bash
    cd path/to/Recursive-File-Zip-Search-Tool
@@ -22,13 +22,13 @@ No extra packages to install.
 2. Run the tool and give it the folder you want to search:
 
    ```bash
-   python main.py /path/to/folder_to_search
+   python file_audit.py /path/to/folder_to_search
    ```
 
    If the path has spaces in it, put it in quotes:
 
    ```bash
-   python main.py "/Users/me/My Documents"
+   python file_audit.py "/Users/me/My Documents"
    ```
 
 3. When it finishes, look in the project folder. You now have two new files:
@@ -38,7 +38,7 @@ No extra packages to install.
 To see all the options at any time:
 
 ```bash
-python main.py --help
+python file_audit.py --help
 ```
 
 ## Try it out with sample files
@@ -52,7 +52,7 @@ python examples/make_business_samples.py
 This creates a folder called `business_samples` (inside `examples`) with 15 small files - invoices, scans, spreadsheets, reports and more - plus a zip file with 11 of them packed inside. Now search that folder:
 
 ```bash
-python main.py examples/business_samples
+python file_audit.py examples/business_samples
 ```
 
 The matches land in `results.csv`, including the ones found inside the zip. Delete the `business_samples` folder whenever you like; run the script again to remake it.
@@ -61,7 +61,7 @@ The matches land in `results.csv`, including the ones found inside the zip. Dele
 
 | Option | What it does | Default |
 | --- | --- | --- |
-| `root_folder` (required) | The folder to start searching from | none |
+| `root_folder` or `--root FOLDER` (required) | The folder to start searching from. Give it either as a plain argument or with `--root` - both do the same thing | none |
 | `--categories FILE` | A JSON file with your category rules | `examples/categories.json` |
 | `--csv FILE` | Where to save the results | `results.csv` |
 | `--log-file FILE` | Where to write the log | `zipsearch.log` |
@@ -69,7 +69,7 @@ The matches land in `results.csv`, including the ones found inside the zip. Dele
 Example using all of them:
 
 ```bash
-python main.py "/Users/me/My Documents" --categories my_categories.json --csv my_results.csv --log-file my_run.log
+python file_audit.py "/Users/me/My Documents" --categories my_categories.json --csv my_results.csv --log-file my_run.log
 ```
 
 The default `results.csv` and `zipsearch.log` are saved in the folder you ran the command from. Each run replaces the CSV file but adds to the end of the log file, so the log keeps a history of earlier runs.
@@ -111,12 +111,12 @@ One row per matched file, with these columns:
 
 | Column | Meaning |
 | --- | --- |
-| `category` | Matching categories. If there are several they are joined like `documents; reports` |
-| `filename` | The file's name |
-| `folder_location` | The folder it is in (for a file inside a zip, the folder path inside the zip) |
-| `zipfile` | The zip it came from, or empty if it is a normal file |
-| `filesizebytes` | Size in bytes |
-| `last_modified` | Last changed date and time. For normal files this is in UTC. For files inside a zip it is the time stored in the zip, with no timezone. |
+| `Category` | Matching categories. If there are several they are joined like `documents; reports` |
+| `Filename` | The file's name |
+| `FolderLocation` | The folder it is in, as a full path (for a file inside a zip, the folder path inside the zip - `/` means the zip's top level) |
+| `Zipfile` | The zip it came from, or empty if it is a normal file |
+| `FileSizeBytes` | Size in bytes |
+| `LastModified` | Last changed date and time. For normal files this is in UTC. For files inside a zip it is the time stored in the zip, with no timezone. |
 
 ## When something goes wrong
 

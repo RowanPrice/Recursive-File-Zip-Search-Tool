@@ -4,8 +4,8 @@ Logging is a record of what the program did. Unlike the folder listing, the
 record stays in a file so you can read it after the program finishes.
 
 ```bash
-python main.py /path/to/root_folder
-python main.py /path/to/root_folder --log-file /existing/folder/search.log
+python file_audit.py /path/to/root_folder
+python file_audit.py /path/to/root_folder --log-file /existing/folder/search.log
 ```
 
 The default is `zipsearch.log` in the folder you run the command from, not
@@ -14,8 +14,9 @@ must already exist. A log file that cannot be opened produces a console ERROR
 and stops the CLI with exit code 1, because that run could not meet the promise
 to write to both destinations.
 
-Messages go to the console's stderr stream and to a UTF-8 file. The directory
-listing still goes to stdout. Each log line starts with the local date/time,
+Messages go to the console's stderr stream and to a UTF-8 file.
+(The old directory listing on stdout was later removed; the log is now the
+only run output.) Each log line starts with the local date/time,
 severity and module, for example:
 
 ```text
@@ -64,7 +65,7 @@ whether to stop or continue. Folder traversal errors that `os.walk` previously
 ignored are now logged and traversal still continues through accessible folders.
 An invalid ZIP timestamp logs a WARNING and keeps the existing `None` date.
 
-This is a logging-only step. `main.py` still lists folders; it does not call
+This is a logging-only step. `file_audit.py` no longer prints a folder listing; it does not call
 category matching, ZIP reading, the results builder or CSV export. Category
 counts appear when `build_results` is called, as in the example above. CLI
 argument mistakes are still handled by argparse before a run starts. There is

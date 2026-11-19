@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Iterator
-from zipfile import BadZipFile, ZipFile, is_zipfile
+from zipfile import BadZipFile, ZipFile
 
 from zipsearch.logging_setup import log_errors
 from zipsearch.models import Entry, ZipSource
@@ -13,20 +13,6 @@ from zipsearch.models import Entry, ZipSource
 # expected failures, so the safe iterator below logs and skips them instead
 # of crashing the whole run.
 SKIP_ZIP_ERRORS = (BadZipFile, RuntimeError, NotImplementedError, OSError)
-
-
-def is_zip(path: str) -> bool:
-    """Return True if path looks like a real ZIP file.
-
-    Two checks must both pass: the name ends in .zip (any capitalisation),
-    and zipfile.is_zipfile confirms the bytes really are a ZIP archive.
-    """
-    # lower() makes the extension check case-insensitive (.ZIP, .Zip ...).
-    if not str(path).lower().endswith(".zip"):
-        return False
-    # is_zipfile only peeks at the file, so it is cheap and never raises
-    # for a missing or unreadable file (it just returns False).
-    return is_zipfile(path)
 
 
 def _describe_source(path: ZipSource) -> str:

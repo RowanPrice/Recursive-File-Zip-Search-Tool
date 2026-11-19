@@ -14,16 +14,19 @@ from zipsearch.models import Entry, Path as FilePath
 class Result(TypedDict):
     """One matched file, with every category kept in the same list.
 
-    zipfile is an empty string for a normal file. last_modified is None when the source
-    has no usable timestamp; otherwise it is an ISO8601 date/time string.
+    Field names double as the CSV column headers. Zipfile is an empty string
+    for a normal file. LastModified is None when the source has no usable
+    timestamp; otherwise it is an ISO8601 date/time string. FolderLocation
+    is the containing folder for a normal file, or the folder path inside
+    the ZIP for a member ('/' for a file at the ZIP's top level).
     """
 
-    category: List[str]
-    filename: str
-    folder_location: str
-    zipfile: str
-    filesizebytes: int
-    last_modified: Optional[str]
+    Category: List[str]
+    Filename: str
+    FolderLocation: str
+    Zipfile: str
+    FileSizeBytes: int
+    LastModified: Optional[str]
 
 
 def _file_entry(path: FilePath) -> Entry:
@@ -90,16 +93,20 @@ def build_results(entries: Iterable[Entry], matcher: CategoryMatcher) -> List[Re
             # Member paths belong to the ZIP, not the operating system.
             path = PurePosixPath(entry.inner_path.replace("\\", "/"))
             archive = entry.container_path
+            # A member at the ZIP's top level has no inner folder; show the
+            # ZIP's root as '/' instead of pathlib's '.'.
+            folder = str(path.parent) if str(path.parent) != "." else "/"
         else:
             path = Path(entry.container_path)
             archive = ""
+            folder = str(path.parent)
         results.append({
-            "category": categories,
-            "filename": path.name,
-            "folder_location": str(path.parent),
-            "zipfile": archive,
-            "filesizebytes": entry.size,
-            "last_modified": entry.last_modified,
+            "Category": categories,
+            "Filename": path.name,
+            "FolderLocation": folder,
+            "Zipfile": archive,
+            "FileSizeBytes": entry.size,
+            "LastModified": entry.last_modified,
         })
     logger = logging.getLogger(__name__)
     for category, count in counts.items():

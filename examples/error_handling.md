@@ -22,7 +22,7 @@ CSV contains everything that did work.
   can skip it.
 - **Unusual filename.** A name with bytes UTF-8 cannot store is written to
   the log and the CSV as a readable escape instead of crashing either one.
-- **Missing or unreadable root folder.** `main.py` stops before searching
+- **Missing or unreadable root folder.** `file_audit.py` stops before searching
   with one clear message and exit code 1, never a traceback:
 
 ```text
@@ -75,12 +75,12 @@ each skip:
 
 ## The command line now runs the whole search
 
-`main.py` connects the pieces above: it walks the folders, opens every ZIP,
+`file_audit.py` connects the pieces above: it walks the folders, opens every ZIP,
 matches categories and writes the CSV.
 
 ```bash
-python main.py /path/to/root_folder
-python main.py /path/to/root_folder --categories my_rules.json --csv out.csv
+python file_audit.py /path/to/root_folder
+python file_audit.py /path/to/root_folder --categories my_rules.json --csv out.csv
 ```
 
 - `--categories` picks the category rules. The default is the bundled

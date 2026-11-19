@@ -63,12 +63,12 @@ def test_plain_result_has_all_categories(tmp_path):
         "reports": {"patterns": ["report*"]},
     })
     assert build_results([entry], matcher) == [{
-        "category": ["documents", "reports"],
-        "filename": "report.txt",
-        "folder_location": str(tmp_path),
-        "zipfile": "",
-        "filesizebytes": 5,
-        "last_modified": entry.last_modified,
+        "Category": ["documents", "reports"],
+        "Filename": "report.txt",
+        "FolderLocation": str(tmp_path),
+        "Zipfile": "",
+        "FileSizeBytes": 5,
+        "LastModified": entry.last_modified,
     }]
 
 
@@ -86,12 +86,12 @@ def test_zip_result_uses_internal_folder(tmp_path):
         archive.writestr(info, b"a" * 1000, compress_type=ZIP_DEFLATED)
     matcher = CategoryMatcher({"text": {"extensions": [".txt"]}})
     assert build_results(iter_zip_entries(path), matcher) == [{
-        "category": ["text"],
-        "filename": "a.txt",
-        "folder_location": "docs/reports",
-        "zipfile": str(path),
-        "filesizebytes": 1000,
-        "last_modified": "2020-02-03T04:05:06",
+        "Category": ["text"],
+        "Filename": "a.txt",
+        "FolderLocation": "docs/reports",
+        "Zipfile": str(path),
+        "FileSizeBytes": 1000,
+        "LastModified": "2020-02-03T04:05:06",
     }]
 
 
@@ -113,7 +113,8 @@ def test_results_skip_unmatched_and_directories():
 
 
 def test_current_folder_and_zip_root():
-    """A parent of '.' means the current folder or the root of the ZIP."""
+    """A relative ordinary file keeps '.', but a file at a ZIP's top level
+    shows the ZIP's root as '/' instead of the confusing '.'."""
     from zipsearch.categories import CategoryMatcher
     from zipsearch.models import Entry
     from zipsearch.results import build_results
@@ -124,9 +125,9 @@ def test_current_folder_and_zip_root():
         Entry("archive.zip", "b.txt", 0, False),
     ]
     results = build_results(entries, matcher)
-    assert [result["folder_location"] for result in results] == [".", "."]
-    assert [result["zipfile"] for result in results] == ["", "archive.zip"]
-    assert all(result["last_modified"] is None for result in results)
+    assert [result["FolderLocation"] for result in results] == [".", "/"]
+    assert [result["Zipfile"] for result in results] == ["", "archive.zip"]
+    assert all(result["LastModified"] is None for result in results)
 
 
 def test_result_paths_and_order():
@@ -140,9 +141,9 @@ def test_result_paths_and_order():
         Entry("relative/archive.zip", "docs\\b.txt", 2, False),
         Entry("relative/a.txt", "", 1, False),
     ], matcher)
-    assert [r["filename"] for r in results] == ["b.txt", "a.txt"]
-    assert [r["folder_location"] for r in results] == ["docs", "relative"]
-    assert results[0]["zipfile"] == "relative/archive.zip"
+    assert [r["Filename"] for r in results] == ["b.txt", "a.txt"]
+    assert [r["FolderLocation"] for r in results] == ["docs", "relative"]
+    assert results[0]["Zipfile"] == "relative/archive.zip"
 
 
 def test_encrypted_zip_results_need_no_password(make_encrypted_zip):
@@ -155,8 +156,8 @@ def test_encrypted_zip_results_need_no_password(make_encrypted_zip):
     matcher = CategoryMatcher({"text": {"extensions": [".txt"]}})
     results = build_results(iter_zip_entries(path), matcher)
     assert len(results) == 1
-    assert results[0]["filename"] == "secret.txt"
-    assert results[0]["zipfile"] == str(path)
+    assert results[0]["Filename"] == "secret.txt"
+    assert results[0]["Zipfile"] == str(path)
 
 
 def test_empty_results():

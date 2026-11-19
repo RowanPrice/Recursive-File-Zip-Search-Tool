@@ -72,7 +72,7 @@ def walk(root: PathLike) -> Iterator[str]:
 def root_problem(root: PathLike) -> Optional[str]:
     """Return a short reason the root folder cannot be searched, else None.
 
-    main.py uses this to stop with a clear, helpful message instead of a
+    file_audit.py uses this to stop with a clear, helpful message instead of a
     traceback. A missing path, a plain file and an unreadable folder each
     get their own reason. Readability is checked by really opening the
     folder listing, because permission rules differ between systems.
