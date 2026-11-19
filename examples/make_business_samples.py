@@ -12,7 +12,7 @@ can see the tool finding matches inside ZIPs too.
 
 Then search the folder:
 
-    python main.py examples/business_samples
+    python file_audit.py examples/business_samples
 
 The results land in results.csv. Nothing here is real data; delete the
 folder whenever you like and run this script again to remake it.
@@ -76,7 +76,7 @@ def main():
 
     print("Created {} files plus business_samples.zip in {}".format(
         len(FILES), OUT))
-    print('Now try: python main.py "{}"'.format(OUT))
+    print('Now try: python file_audit.py "{}"'.format(OUT))
 
 
 if __name__ == "__main__":
