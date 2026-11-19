@@ -89,5 +89,4 @@ def iter_zip_entries_safe(path: ZipSource) -> Iterator[Entry]:
     except SKIP_ZIP_ERRORS as error:
         logging.getLogger(__name__).error(
             "Skipping ZIP '%s': %s: %s",
-            _describe_source(path), type(error).__name__, error,
-            )
+            _describe_source(path), type(error).__nam        )
