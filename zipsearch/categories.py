@@ -22,9 +22,14 @@ class CategoryMatcher:
     matching category in config order, or [] when nothing matches.
     """
 
-    @log_errors
     def __init__(self, categories: CategoryConfig) -> None:
-        """Validate and copy rules so later edits cannot change this matcher."""
+        """Validate and copy rules so later edits cannot change this matcher.
+
+        Bad rules raise ValueError with the exact problem. This is deliberately
+        not wrapped in log_errors: the CLI loads configs through
+        safe_load_categories, which turns the error into one clear line, and a
+        logged traceback here would appear before it.
+        """
         if not isinstance(categories, Mapping):
             raise ValueError("Categories must be a dict of category rules")
         self._rules = []
