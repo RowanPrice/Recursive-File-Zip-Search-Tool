@@ -1,7 +1,7 @@
 # Category matching
 
 This step gives each file zero, one or several category names. It checks names,
-not file contents, and does not change `main.py` yet.
+not file contents, and does not change `file_audit.py` yet.
 
 ## Start with a Python dict
 
