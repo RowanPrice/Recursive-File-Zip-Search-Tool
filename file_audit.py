@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recursive File Zip Search Tool"""
+"""File Audit: recursively search folders and ZIPs, and save matches to a CSV."""
 import argparse
 import logging
 import sys
@@ -18,13 +18,18 @@ DEFAULT_CATEGORIES = Path(__file__).resolve().parent / "examples" / "categories.
 
 
 def main():
-    """Validate inputs, log the run, list folders and write the matches CSV."""
+    """Validate inputs, log the run, walk folders and write the matches CSV."""
     parser = argparse.ArgumentParser(
         description="Recursively walk folders, look inside ZIPs and save matches to a CSV"
     )
     parser.add_argument(
-        "root_folder",
-        help="Root folder path to start searching from"
+        "root_folder", nargs="?",
+        help="Root folder to start searching from (same as --root)"
+    )
+    parser.add_argument(
+        "--root", dest="root_option",
+        help="Root folder to start searching from, as a named argument "
+             "(same as the positional root_folder)"
     )
     parser.add_argument(
         "--log-file", default="zipsearch.log",
@@ -40,13 +45,21 @@ def main():
     )
     args = parser.parse_args()
 
+    # The root folder can be given either way, but exactly once.
+    if args.root_folder and args.root_option:
+        parser.error("give the root folder once: either as an argument or with --root")
+    root_argument = args.root_option or args.root_folder
+    if root_argument is None:
+        parser.error("a root folder is required: pass it as an argument or with --root")
+
     try:
         logger = setup_logging(args.log_file)
     except OSError:
         # setup_logging has already reported why the file cannot be opened.
         sys.exit(1)
 
-    root_path = Path(args.root_folder)
+    # Resolve the root so the CSV holds full absolute folder paths.
+    root_path = Path(root_argument).resolve()
     logger.info("Run started")
     logger.info("Root folder: %s", root_path)
     outcome = "failed"
@@ -62,14 +75,9 @@ def main():
             # safe_load_categories has already logged the clear reason.
             sys.exit(1)
 
-        print(f"Walking: {root_path}")
         entries = []
-        for root, dirs, files in walker.walk_directories(root_path):
-            print(f"\nDirectory: {root}")
-            for d in dirs:
-                print(f"  [DIR] {d}")
+        for root, _dirs, files in walker.walk_directories(root_path):
             for f in files:
-                print(f"  [FILE] {f}")
                 path = str(Path(root) / f)
                 if f.lower().endswith(".zip"):
                     # Bad ZIPs are logged and skipped inside the safe reader.
@@ -85,7 +93,6 @@ def main():
             # safe_write_results_csv has already logged the clear reason.
             sys.exit(1)
         logger.info("CSV written to '%s': %d matched file(s)", args.csv, len(results))
-        print(f"CSV written: {args.csv} ({len(results)} matched file(s))")
         outcome = "completed"
     except KeyboardInterrupt:
         outcome = "interrupted"
